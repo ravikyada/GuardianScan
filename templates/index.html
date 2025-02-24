@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Scanner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        function scanWebsite(event) {
+            event.preventDefault();
+            let url = document.getElementById("url").value;
+
+            // Clear previous logs
+            document.getElementById("open-ports").innerHTML = "";
+            document.getElementById("security-headers").innerHTML = "";
+            document.getElementById("sensitive-files").innerHTML = "";
+            document.getElementById("live-logs").innerHTML = "";
+            
+            document.getElementById("scan-results").classList.remove("hidden");
+
+            // Start real-time log fetching
+            const eventSource = new EventSource(`/logs?url=${encodeURIComponent(url)}`);
+
+            eventSource.onmessage = function (event) {
+                const log = document.createElement("p");
+                log.textContent = event.data;
+
+                // Append log to live logs
+                document.getElementById("live-logs").appendChild(log.cloneNode(true));
+
+                // Categorize logs
+                if (event.data.includes("Port")) {
+                    document.getElementById("open-ports").appendChild(log.cloneNode(true));
+                } else if (event.data.includes("Security header")) {
+                    document.getElementById("security-headers").appendChild(log.cloneNode(true));
+                } else if (event.data.includes("Sensitive file")) {
+                    document.getElementById("sensitive-files").appendChild(log.cloneNode(true));
+                }
+
+                // Highlight status
+                if (event.data.includes("❌")) {
+                    log.className = "text-red-600 font-bold";
+                } else if (event.data.includes("✅")) {
+                    log.className = "text-green-600";
+                } else {
+                    log.className = "text-blue-500";
+                }
+
+                log.scrollIntoView({ behavior: "smooth" });
+
+                // Close SSE when scan completes
+                if (event.data.includes("🔴 Scan complete, closing connection.")) {
+                    eventSource.close();
+                }
+            };
+
+            eventSource.onerror = function () {
+                console.error("❌ SSE connection failed.");
+                const errorLog = document.createElement("p");
+                errorLog.textContent = "❌ Error fetching logs. Please try again.";
+                errorLog.className = "text-red-600";
+                document.getElementById("live-logs").appendChild(errorLog);
+                eventSource.close();
+            };
+        }
+
+        function toggleSection(sectionId) {
+            var section = document.getElementById(sectionId);
+            section.classList.toggle("hidden");
+        }
+    </script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <!-- Navigation -->
+    <nav class="bg-gradient-to-r from-blue-600 to-blue-400 text-white p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="/" class="font-bold text-lg flex items-center">🔍 Security Scanner</a>
+            <div class="space-x-6">
+                <a href="/" class="hover:underline">Home</a>
+                <a href="/reports" class="hover:underline">Reports</a>
+                <a href="/about" class="hover:underline">About</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mx-auto mt-8">
+        <div class="bg-white shadow-lg p-6 rounded-lg">
+            <h1 class="text-3xl font-semibold mb-4">Scan a Target Website</h1>
+            <form onsubmit="scanWebsite(event)" class="flex space-x-4">
+                <input type="text" id="url" placeholder="Enter target URL (e.g., https://example.com)" required class="flex-1 p-2 border border-gray-300 rounded">
+                <button type="submit" class="bg-blue-600 text-white py-2 px-6 rounded-lg shadow-md hover:bg-blue-700">Scan</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Live Logs Section -->
+    <div class="container mx-auto mt-8">
+        <div class="bg-white shadow-lg p-6 rounded-lg">
+            <h2 class="text-2xl font-semibold mb-2">📜 Live Scan Logs</h2>
+            <div id="live-logs" class="bg-gray-100 p-4 rounded max-h-64 overflow-auto border border-gray-300"></div>
+        </div>
+    </div>
+
+    <!-- Scan Results Section -->
+    <div id="scan-results" class="container mx-auto mt-8 hidden">
+        <div class="bg-white shadow-lg p-6 rounded-lg">
+            <h2 class="text-3xl font-semibold mb-4">🔍 Scan Results</h2>
+
+            <button class="w-full text-left font-bold text-lg bg-gray-200 p-3 rounded-lg mb-2" onclick="toggleSection('open-ports')">📂 Open Ports (Click to Expand)</button>
+            <div id="open-ports" class="hidden bg-gray-100 p-4 rounded-lg max-h-64 overflow-auto"></div>
+
+            <button class="w-full text-left font-bold text-lg bg-gray-200 p-3 rounded-lg mb-2" onclick="toggleSection('security-headers')">🔒 Security Headers (Click to Expand)</button>
+            <div id="security-headers" class="hidden bg-gray-100 p-4 rounded-lg max-h-64 overflow-auto"></div>
+
+            <button class="w-full text-left font-bold text-lg bg-gray-200 p-3 rounded-lg mb-2" onclick="toggleSection('sensitive-files')">📁 Sensitive Files (Click to Expand)</button>
+            <div id="sensitive-files" class="hidden bg-gray-100 p-4 rounded-lg max-h-64 overflow-auto"></div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white mt-12 p-4 text-center text-sm">
+        <p>&copy; 2025 Security Scanner. All rights reserved.</p>
+    </footer>
+</body>
+</html>

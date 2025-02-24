@@ -1,6 +1,6 @@
-# Contributing to GuardianScan 🚀
+# Contributing to Nova 🚀
 
-First off, **thank you** for considering contributing to **GuardianScan**! Your contributions help improve security scanning for developers and pentesters.
+First off, **thank you** for considering contributing to **Nova**! Your contributions help improve security scanning for developers and pentesters.
 
 ---
 
@@ -11,7 +11,7 @@ Click the **Fork** button on the top right of the repository page.
 
 ### 2️⃣ Clone Your Fork
 ```sh
-git clone  https://github.com/ravikyada/GuardianScan.git
+git clone  https://github.com/ravikyada/Nova.git
 ```
 
 ### 3️⃣ Create a Feature Branch
@@ -49,7 +49,7 @@ The scanner will run on **http://localhost:8000**.
 
 ## 📢 Reporting Issues
 
-- Search existing [Issues](https://github.com/ravikyada/GuardianScan/issues) before opening a new one.
+- Search existing [Issues](https://github.com/ravikyada/Nova/issues) before opening a new one.
 - Provide clear steps to reproduce bugs.
 - Security vulnerabilities must be reported **privately** via email at `<>`.
 

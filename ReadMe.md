@@ -20,7 +20,7 @@ A **lightweight and efficient** security scanner written in **Golang** 🛡️, 
 
 ### Clone the Repository
 ```sh
-git clone https://github.com/ravikyada/GuardianScan.git
+git clone https://github.com/ravikyada/Nova.git
 ```
 
 ### Run the Scanner
@@ -47,7 +47,7 @@ We **welcome contributions**! Please follow the guidelines below.
 1. **Fork the Repository**
 2. **Clone Your Fork**
    ```sh
-   git clone  https://github.com/ravikyada/GuardianScan.git
+   git clone  https://github.com/ravikyada/Nova.git
    ```
 3. **Create a Feature Branch**
    ```sh
@@ -75,7 +75,7 @@ This project follows a strict **Code of Conduct** to ensure a welcoming environm
 
 Before submitting a bug report, please:
 - Ensure you are using the latest version
-- Search existing [Issues](https://github.com/ravikyada/GuardianScan/issues)
+- Search existing [Issues](https://github.com/ravikyada/Nova/issues)
 - Provide a clear description with steps to reproduce
 - Include relevant logs, system information, and environment details
 
