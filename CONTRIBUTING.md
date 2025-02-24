@@ -16,7 +16,8 @@ git clone  https://github.com/ravikyada/Nova.git
 
 ### 3️⃣ Create a Feature Branch
 ```sh
-git checkout -b feature/new-awesome-feature```
+git checkout -b feature/new-awesome-feature
+```
 
 ### 4️⃣ Make Your Changes
 Modify the code, fix a bug, or add a new feature. Ensure your code follows best practices.
