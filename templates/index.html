@@ -1,126 +1,961 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Scanner</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        function scanWebsite(event) {
-            event.preventDefault();
-            let url = document.getElementById("url").value;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🚀 Security Scanner - Single Page</title>
+  <!-- External libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
 
-            // Clear previous logs
-            document.getElementById("open-ports").innerHTML = "";
-            document.getElementById("security-headers").innerHTML = "";
-            document.getElementById("sensitive-files").innerHTML = "";
-            document.getElementById("live-logs").innerHTML = "";
-            
-            document.getElementById("scan-results").classList.remove("hidden");
+  <!-- ==============================
+       Inline CSS: Futuristic Styling
+       ============================== -->
+  <style>
+    /* Base Body & Global Styles */
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: "Poppins", sans-serif;
+      color: #f0f0f0;
+      background: linear-gradient(135deg, #141e30, #243b55) fixed;
+      background-attachment: fixed;
+      background-repeat: no-repeat;
+      background-size: cover;
+    }
+    body {
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+    h1, h2, h3, h4, h5 {
+      text-shadow: 0 0 5px rgba(0, 255, 255, 0.4);
+    }
+    a, button {
+      cursor: pointer;
+    }
 
-            // Start real-time log fetching
-            const eventSource = new EventSource(`/logs?url=${encodeURIComponent(url)}`);
+    /* Navigation Bar */
+    nav {
+      background: linear-gradient(90deg, #0f3460, #16213e);
+      padding: 1rem;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+      position: sticky;
+      top: 0;
+      z-index: 999;
+    }
+    nav a {
+      color: #eaeaea;
+      text-decoration: none;
+      margin-right: 1.5rem;
+      transition: color 0.3s ease;
+    }
+    nav a:hover {
+      color: #0ff;
+    }
 
-            eventSource.onmessage = function (event) {
-                const log = document.createElement("p");
-                log.textContent = event.data;
+    /* Container & Layout Helpers */
+    .container {
+      max-width: 1200px;
+      margin: auto;
+      padding: 2rem;
+    }
+    .hidden {
+      display: none !important;
+    }
 
-                // Append log to live logs
-                document.getElementById("live-logs").appendChild(log.cloneNode(true));
+    /* Hero Banner */
+    .hero-banner {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4rem 2rem;
+      border-radius: 1rem;
+      text-align: center;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+    }
+    .hero-title {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      color: #a0faff;
+    }
+    .hero-subtitle {
+      font-size: 1.2rem;
+      color: #cfcfcf;
+      margin-bottom: 2rem;
+    }
 
-                // Categorize logs
-                if (event.data.includes("Port")) {
-                    document.getElementById("open-ports").appendChild(log.cloneNode(true));
-                } else if (event.data.includes("Security header")) {
-                    document.getElementById("security-headers").appendChild(log.cloneNode(true));
-                } else if (event.data.includes("Sensitive file")) {
-                    document.getElementById("sensitive-files").appendChild(log.cloneNode(true));
-                }
+    /* Buttons & Hover Effects */
+    button {
+      transition: background-color 0.3s ease, transform 0.2s ease;
+      outline: none;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 0.5rem;
+    }
+    button:hover {
+      opacity: 0.9;
+      transform: scale(1.03);
+    }
 
-                // Highlight status
-                if (event.data.includes("❌")) {
-                    log.className = "text-red-600 font-bold";
-                } else if (event.data.includes("✅")) {
-                    log.className = "text-green-600";
-                } else {
-                    log.className = "text-blue-500";
-                }
+    /* DNS Checker Section */
+    #dnsCheckerSection {
+      display: none;
+    }
+    #dnsCheckerSection:not(.hidden) {
+      display: block;
+    }
 
-                log.scrollIntoView({ behavior: "smooth" });
+    /* Main Content (Home/Scanning) */
+    #mainContent {
+      margin-top: 2rem;
+    }
+    /* Live Logs */
+    #live-logs {
+      background: rgba(0, 0, 0, 0.5);
+      padding: 1rem;
+      border-radius: 0.5rem;
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid rgba(0, 255, 255, 0.3);
+    }
+    /* Scan Results Section */
+    #scan-results {
+      margin-top: 2rem;
+    }
+    .toggle-button {
+      transition: background 0.2s ease;
+    }
+    .toggle-button:hover {
+      background: #cfd8dc;
+    }
 
-                // Close SSE when scan completes
-                if (event.data.includes("🔴 Scan complete, closing connection.")) {
-                    eventSource.close();
-                }
-            };
+    /* Progress Bar Styles */
+    .progress-container {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 25px;
+      overflow: hidden;
+      margin: 1rem 0;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    }
+    .progress-bar {
+      height: 10px;
+      background: linear-gradient(90deg, #0ff, #09f, #0ff);
+      width: 0%;
+      animation: progressLoop 2s linear infinite;
+    }
+    @keyframes progressLoop {
+      0% { width: 0%; }
+      50% { width: 100%; }
+      100% { width: 0%; }
+    }
 
-            eventSource.onerror = function () {
-                console.error("❌ SSE connection failed.");
-                const errorLog = document.createElement("p");
-                errorLog.textContent = "❌ Error fetching logs. Please try again.";
-                errorLog.className = "text-red-600";
-                document.getElementById("live-logs").appendChild(errorLog);
-                eventSource.close();
-            };
+    /* Extra Sections (Features, How It Works, Testimonials) */
+    .features-section {
+      margin-top: 4rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+    .feature-box {
+      background: rgba(255, 255, 255, 0.1);
+      flex: 1 1 calc(33.333% - 1.5rem);
+      min-width: 250px;
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      text-align: center;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.1);
+      transition: transform 0.3s ease;
+    }
+    .feature-box:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+    }
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    .feature-title {
+      font-size: 1.3rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .how-it-works {
+      margin-top: 4rem;
+    }
+    .step {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 2rem;
+    }
+    .step-number {
+      background: #0ff;
+      color: #000;
+      font-weight: bold;
+      font-size: 1.5rem;
+      width: 3rem;
+      height: 3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      margin-right: 1rem;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
+    }
+    .step-description {
+      flex: 1;
+    }
+
+    .testimonials {
+      margin-top: 4rem;
+    }
+    .testimonial {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.1);
+    }
+
+    /* Reports Section */
+    #reportsSection {
+      display: none;
+    }
+    #reportsSection:not(.hidden) {
+      display: block;
+    }
+    .reports-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    .reports-table th,
+    .reports-table td {
+      border: 1px solid #ccc;
+      padding: 0.75rem;
+      text-align: left;
+      color: #333;
+      background-color: #fff;
+    }
+    .reports-table th {
+      background-color: #eee;
+    }
+    .table-container {
+      overflow-x: auto;
+      border-radius: 0.5rem;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.1);
+      margin-top: 1rem;
+    }
+
+    /* About Section */
+    #aboutSection {
+      display: none;
+    }
+    #aboutSection:not(.hidden) {
+      display: block;
+    }
+
+    /* Footer */
+    footer {
+      background-color: #0f3460;
+      color: #eaeaea;
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.9em;
+      margin-top: 3rem;
+    }
+
+    @media (max-width: 768px) {
+      .features-section {
+        flex-direction: column;
+      }
+      .feature-box {
+        flex: 1 1 100%;
+      }
+      .step {
+        flex-direction: column;
+        align-items: center;
+      }
+      .step-number {
+        margin-bottom: 1rem;
+      }
+    }
+  </style>
+
+  <!-- ==============================
+       Inline JavaScript
+       ============================== -->
+  <script>
+    /************************************************
+     * NAVIGATION: Show/Hide Different Sections
+     ************************************************/
+    function showSection(sectionId) {
+      document.getElementById("mainContent").classList.add("hidden");
+      document.getElementById("dnsCheckerSection").classList.add("hidden");
+      document.getElementById("reportsSection").classList.add("hidden");
+      document.getElementById("aboutSection").classList.add("hidden");
+      const target = document.getElementById(sectionId);
+      if (target) {
+        target.classList.remove("hidden");
+      }
+    }
+
+    /************************************************
+     * DNS CHECK FUNCTIONALITY
+     ************************************************/
+    document.addEventListener("DOMContentLoaded", () => {
+      // DNS Form
+      document.getElementById("dnsForm").addEventListener("submit", (event) => {
+        event.preventDefault();
+        let domain = document.getElementById("domain").value.trim();
+        let recordType = document.getElementById("recordType").value;
+        let resultsDiv = document.getElementById("dnsResults");
+
+        if (!domain) {
+          resultsDiv.innerHTML = "<p class='text-red-500'>⚠️ Please enter a valid domain.</p>";
+          return;
         }
 
-        function toggleSection(sectionId) {
-            var section = document.getElementById(sectionId);
-            section.classList.toggle("hidden");
+        resultsDiv.innerHTML = "<p class='text-blue-500'>🔍 Checking DNS records...</p>";
+
+        fetch(`/dns-check?domain=${encodeURIComponent(domain)}&recordType=${recordType}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.error) {
+              resultsDiv.innerHTML = `<p class='text-red-500'>❌ Error: ${data.error}</p>`;
+            } else {
+              let output = `
+                <h3 class='text-lg font-bold'>DNS Records for ${data.domain} (${data.recordType}):</h3>
+                <ul class='list-disc pl-4 text-green-400'>
+              `;
+              data.records.forEach(record => {
+                output += `<li>${record}</li>`;
+              });
+              output += `</ul>`;
+              resultsDiv.innerHTML = output;
+              fetchLocationDetails(data.records[0], resultsDiv);
+            }
+          })
+          .catch(error => {
+            resultsDiv.innerHTML = "<p class='text-red-500'>❌ Error fetching DNS records.</p>";
+            console.error("Error:", error);
+          });
+      });
+
+      // On load, fetch real reports from /api/reports
+      fetch("/api/reports")
+        .then(response => response.json())
+        .then(data => {
+          populateReportsTable(data);
+        })
+        .catch(error => {
+          console.error("Error fetching reports:", error);
+          const tableBody = document.getElementById("reportsTableBody");
+          tableBody.innerHTML = `
+            <tr>
+              <td colspan="5" class="text-center text-red-500 py-4">
+                Failed to load reports.
+              </td>
+            </tr>`;
+        });
+    });
+
+    // IP location fetch
+    function fetchLocationDetails(ip, resultsDiv) {
+      if (!ip) return;
+      resultsDiv.innerHTML += "<p class='text-blue-500'>🌐 Fetching server location...</p>";
+      fetch(`/location?ip=${encodeURIComponent(ip)}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            resultsDiv.innerHTML += `<p class='text-red-500'>❌ Error: ${data.error}</p>`;
+          } else {
+            const location = data.location;
+            const formattedLocation = `
+              <ul class='mt-2 text-sm text-gray-600'>
+                <li><strong>IP Address:</strong> ${location.ip}</li>
+                <li><strong>Hostname:</strong> ${location.hostname}</li>
+                <li><strong>City:</strong> ${location.city}</li>
+                <li><strong>Region:</strong> ${location.region}</li>
+                <li><strong>Country:</strong> ${location.country}</li>
+                <li><strong>Location (Lat, Long):</strong> ${location.loc}</li>
+                <li><strong>Organization:</strong> ${location.org}</li>
+                <li><strong>Timezone:</strong> ${location.timezone}</li>
+              </ul>
+            `;
+            resultsDiv.innerHTML += formattedLocation;
+          }
+        })
+        .catch(error => {
+          resultsDiv.innerHTML += "<p class='text-red-500'>❌ Error fetching server location.</p>";
+          console.error("Error:", error);
+        });
+    }
+
+    /************************************************
+     * SCANNING (SSE) & PROGRESS BAR
+     ************************************************/
+    function scanWebsite(event) {
+      event.preventDefault();
+      let url = document.getElementById("url").value.trim();
+      if (!url) {
+        alert("Please enter a valid URL to scan.");
+        return;
+      }
+
+      document.getElementById("open-ports").innerHTML = "";
+      document.getElementById("security-headers").innerHTML = "";
+      document.getElementById("sensitive-files").innerHTML = "";
+      document.getElementById("live-logs").innerHTML = "";
+      document.getElementById("scan-results").classList.remove("hidden");
+
+      startProgress();
+
+      const eventSource = new EventSource(`/logs?url=${encodeURIComponent(url)}`);
+      eventSource.onmessage = function (event) {
+        const log = document.createElement("p");
+        log.textContent = event.data;
+        document.getElementById("live-logs").appendChild(log.cloneNode(true));
+
+        // Categorize logs
+        if (event.data.includes("Port")) {
+          document.getElementById("open-ports").appendChild(log.cloneNode(true));
+        } else if (event.data.toLowerCase().includes("security header")) {
+          document.getElementById("security-headers").appendChild(log.cloneNode(true));
+        } else if (
+          event.data.toLowerCase().includes("sensitive file") ||
+          event.data.toLowerCase().includes("checking sensitive files") ||
+          event.data.toLowerCase().includes("checking database files") ||
+          event.data.toLowerCase().includes("checking wordpress files") ||
+          event.data.toLowerCase().includes("checking node.js files") ||
+          event.data.toLowerCase().includes("checking common vulnerability files") ||
+          event.data.toLowerCase().includes("not accessible")
+        ) {
+          document.getElementById("sensitive-files").appendChild(log.cloneNode(true));
         }
-    </script>
+
+        // Highlight
+        if (event.data.includes("❌")) {
+          log.className = "text-red-600 font-bold";
+        } else if (event.data.includes("✅")) {
+          log.className = "text-green-600";
+        } else {
+          log.className = "text-blue-500";
+        }
+        log.scrollIntoView({ behavior: "smooth" });
+
+        // Close SSE when done
+        if (event.data.includes("🔴 Scan complete, closing connection.")) {
+          eventSource.close();
+          stopProgress();
+        }
+      };
+
+      eventSource.onerror = function () {
+        console.error("❌ SSE connection failed.");
+        const errorLog = document.createElement("p");
+        errorLog.textContent = "❌ Error fetching logs. Please try again.";
+        errorLog.className = "text-red-600";
+        document.getElementById("live-logs").appendChild(errorLog);
+        eventSource.close();
+        stopProgress();
+      };
+    }
+
+    function rescan() {
+      const url = document.getElementById("url").value.trim();
+      if (!url) {
+        alert("Please enter a URL to scan.");
+        return;
+      }
+      document.getElementById("open-ports").innerHTML = "";
+      document.getElementById("security-headers").innerHTML = "";
+      document.getElementById("sensitive-files").innerHTML = "";
+      document.getElementById("live-logs").innerHTML = "";
+      document.getElementById("scan-results").classList.remove("hidden");
+
+      startProgress();
+
+      const eventSource = new EventSource(`/logs?url=${encodeURIComponent(url)}`);
+      eventSource.onmessage = function (event) {
+        const log = document.createElement("p");
+        log.textContent = event.data;
+        document.getElementById("live-logs").appendChild(log.cloneNode(true));
+
+        if (event.data.includes("Port")) {
+          document.getElementById("open-ports").appendChild(log.cloneNode(true));
+        } else if (event.data.toLowerCase().includes("security header")) {
+          document.getElementById("security-headers").appendChild(log.cloneNode(true));
+        } else if (
+          event.data.toLowerCase().includes("sensitive file") ||
+          event.data.toLowerCase().includes("checking sensitive files")
+        ) {
+          document.getElementById("sensitive-files").appendChild(log.cloneNode(true));
+        }
+
+        if (event.data.includes("❌")) {
+          log.className = "text-red-600 font-bold";
+        } else if (event.data.includes("✅")) {
+          log.className = "text-green-600";
+        } else {
+          log.className = "text-blue-500";
+        }
+        log.scrollIntoView({ behavior: "smooth" });
+
+        if (event.data.includes("🔴 Scan complete, closing connection.")) {
+          eventSource.close();
+          stopProgress();
+        }
+      };
+
+      eventSource.onerror = function () {
+        console.error("❌ SSE connection failed.");
+        const errorLog = document.createElement("p");
+        errorLog.textContent = "❌ Error fetching logs. Please try again.";
+        errorLog.className = "text-red-600";
+        document.getElementById("live-logs").appendChild(errorLog);
+        eventSource.close();
+        stopProgress();
+      };
+    }
+
+    function startProgress() {
+      const progressContainer = document.getElementById("progress-container");
+      if (progressContainer) {
+        progressContainer.style.display = "block";
+      }
+    }
+    function stopProgress() {
+      const progressContainer = document.getElementById("progress-container");
+      if (progressContainer) {
+        progressContainer.style.display = "none";
+      }
+    }
+
+    function toggleSection(sectionId) {
+      const section = document.getElementById(sectionId);
+      section.classList.toggle("hidden");
+    }
+
+    /************************************************
+     * REPORTS TABLE (NO STATUS, JUST FINDINGS)
+     ************************************************/
+
+    // Summarize how many open ports, missing headers, sensitive files found
+    function summarizeFindings(resultsString) {
+      if (!resultsString) return "No data";
+
+      let openPortsCount = 0;
+      let missingHeadersCount = 0;
+      let sensitiveFilesCount = 0;
+
+      const lines = resultsString.split("\n");
+      lines.forEach(line => {
+        if (line.includes("❌ Port")) {
+          openPortsCount++;
+        }
+        if (line.includes("❌ Missing security header")) {
+          missingHeadersCount++;
+        }
+        if (line.includes("❌ Found:")) {
+          sensitiveFilesCount++;
+        }
+      });
+
+      // Example: "2 open ports, 2 missing security headers, 1 sensitive file found"
+      return `${openPortsCount} open ports, ${missingHeadersCount} missing security headers, ${sensitiveFilesCount} sensitive file(s) found`;
+    }
+
+    function populateReportsTable(reports) {
+      const tableBody = document.getElementById("reportsTableBody");
+      tableBody.innerHTML = "";
+
+      if (!reports || reports.length === 0) {
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="5" class="text-center text-gray-500 py-4">
+              No reports found. Run a scan to generate reports.
+            </td>
+          </tr>`;
+        return;
+      }
+
+      // Sort by descending timestamp so newest is first
+      reports.sort((a, b) => {
+        if (!a.timestamp) return 1;
+        if (!b.timestamp) return -1;
+        return new Date(b.timestamp) - new Date(a.timestamp);
+      });
+
+      reports.forEach((report, index) => {
+        // rowId = 1 for newest, 2 for next, etc.
+        const rowId = index + 1;
+
+        const row = document.createElement("tr");
+
+        // ID
+        const idCell = document.createElement("td");
+        idCell.textContent = rowId;
+        row.appendChild(idCell);
+
+        // URL
+        const urlCell = document.createElement("td");
+        urlCell.textContent = report.url || "N/A";
+        row.appendChild(urlCell);
+
+        // Date
+        const dateCell = document.createElement("td");
+        if (report.timestamp) {
+          const localTime = new Date(report.timestamp).toLocaleString();
+          dateCell.textContent = localTime;
+        } else {
+          dateCell.textContent = "N/A";
+        }
+        row.appendChild(dateCell);
+
+        // Findings summary
+        const findingsCell = document.createElement("td");
+        findingsCell.textContent = summarizeFindings(report.results);
+        row.appendChild(findingsCell);
+
+        // Download PDF
+        const downloadCell = document.createElement("td");
+        const downloadButton = document.createElement("button");
+        downloadButton.className = "bg-blue-600 text-white py-1 px-3 rounded hover:bg-blue-700";
+        downloadButton.textContent = "Download PDF";
+        downloadButton.onclick = () => downloadReportAsPDF(report, rowId);
+        downloadCell.appendChild(downloadButton);
+        row.appendChild(downloadCell);
+
+        tableBody.appendChild(row);
+      });
+    }
+
+    function downloadReportAsPDF(report, rowId) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.text(`Security Scan Report - ID: ${rowId}`, 10, 20);
+
+      doc.setFontSize(12);
+      doc.text(`URL: ${report.url || "N/A"}`, 10, 30);
+
+      let dateStr = "N/A";
+      if (report.timestamp) {
+        dateStr = new Date(report.timestamp).toLocaleString();
+      }
+      doc.text(`Date: ${dateStr}`, 10, 40);
+
+      // Instead of "Status," we can print the summary or the entire logs
+      doc.text("Findings Summary:", 10, 50);
+      const summary = summarizeFindings(report.results);
+      doc.text(summary, 10, 60);
+
+      // Also add the full logs for details
+      doc.text("Full Logs:", 10, 70);
+      const fullLogs = report.results || "No results.";
+      const lines = doc.splitTextToSize(fullLogs, 180);
+      doc.text(lines, 10, 80);
+
+      doc.save(`report-${rowId}.pdf`);
+    }
+
+    // If you ever open a modal for details, you'd close it here
+    function closeModal() {
+      document.getElementById("resultsModal").classList.add("hidden");
+    }
+  </script>
 </head>
-<body class="bg-gray-100 font-sans">
-    <!-- Navigation -->
-    <nav class="bg-gradient-to-r from-blue-600 to-blue-400 text-white p-4 shadow-lg">
-        <div class="container mx-auto flex justify-between items-center">
-            <a href="/" class="font-bold text-lg flex items-center">🔍 Security Scanner</a>
-            <div class="space-x-6">
-                <a href="/" class="hover:underline">Home</a>
-                <a href="/reports" class="hover:underline">Reports</a>
-                <a href="/about" class="hover:underline">About</a>
-            </div>
-        </div>
-    </nav>
+<body>
+<!-- Navigation -->
+<nav class="bg-gradient-to-r from-[#0a1e3f] to-[#1c2a48] text-white p-4 shadow-lg backdrop-blur-md">
+  <div class="container mx-auto flex justify-between items-center">
+    <a href="#" class="font-extrabold text-3xl flex items-center space-x-2 hover:text-cyan-300 transition-colors duration-300 ease-in-out">
+      <span>🛡️</span>
+      <span class="text-gradient">Security Scanner</span>
+    </a>
+    <div class="space-x-6">
+      <a onclick="showSection('mainContent')" class="hover:underline text-xl transform transition-transform duration-300 ease-in-out hover:scale-105">Home</a>
+      <a onclick="showSection('dnsCheckerSection')" class="hover:underline text-xl transform transition-transform duration-300 ease-in-out hover:scale-105">DNS Check</a>
+      <a onclick="showSection('reportsSection')" class="hover:underline text-xl transform transition-transform duration-300 ease-in-out hover:scale-105">Reports</a>
+      <a onclick="showSection('aboutSection')" class="hover:underline text-xl transform transition-transform duration-300 ease-in-out hover:scale-105">About</a>
+    </div>
+  </div>
+</nav>
 
-    <!-- Main Content -->
+
+  <!-- DNS Checker Section -->
+  <div id="dnsCheckerSection" class="container mx-auto mt-8 hidden">
+    <div class="bg-white shadow-lg p-6 rounded-lg text-gray-900">
+      <h2 class="text-3xl font-semibold mb-4">🔎 DNS Check</h2>
+      <form id="dnsForm" class="flex flex-wrap space-y-4 sm:space-y-0 sm:space-x-4">
+        <input
+          type="text"
+          id="domain"
+          placeholder="Enter domain name (e.g., example.com)"
+          required
+          class="flex-1 p-2 border border-gray-300 rounded"
+        />
+        <select id="recordType" class="p-2 border border-gray-300 rounded">
+          <option value="A">A</option>
+          <option value="CNAME">CNAME</option>
+        </select>
+        <button
+          type="submit"
+          class="bg-blue-600 text-white py-2 px-6 rounded-lg shadow-md hover:bg-blue-700"
+        >
+          Check DNS
+        </button>
+      </form>
+      <div id="dnsResults" class="mt-4 text-sm"></div>
+    </div>
+  </div>
+
+  <!-- Main Content (Home) -->
+  <div id="mainContent">
+    <div class="container hero-banner">
+      <h1 class="hero-title text-4xl font-bold">Welcome to Security Scanner ⚡</h1>
+      <p class="hero-subtitle">
+        Safeguard your websites and servers with real-time scanning and DNS insights.
+      </p>
+      <button
+        class="bg-pink-600 text-white py-2 px-8 rounded-lg shadow-md hover:bg-pink-700"
+        onclick="showSection('dnsCheckerSection')"
+      >
+        Go to DNS Checker
+      </button>
+    </div>
+
+    <!-- Scan a Target Website Form -->
     <div class="container mx-auto mt-8">
-        <div class="bg-white shadow-lg p-6 rounded-lg">
-            <h1 class="text-3xl font-semibold mb-4">Scan a Target Website</h1>
-            <form onsubmit="scanWebsite(event)" class="flex space-x-4">
-                <input type="text" id="url" placeholder="Enter target URL (e.g., https://example.com)" required class="flex-1 p-2 border border-gray-300 rounded">
-                <button type="submit" class="bg-blue-600 text-white py-2 px-6 rounded-lg shadow-md hover:bg-blue-700">Scan</button>
-            </form>
-        </div>
+      <div class="bg-white shadow-lg p-6 rounded-lg text-gray-900">
+        <h1 class="text-3xl font-semibold mb-4">🔍 Scan a Target Website</h1>
+        <form onsubmit="scanWebsite(event)" class="flex flex-wrap space-y-4 sm:space-y-0 sm:space-x-4">
+          <input
+            type="text"
+            id="url"
+            placeholder="Enter target URL (e.g., https://example.com)"
+            required
+            class="flex-1 p-2 border border-gray-300 rounded"
+          />
+          <button
+            type="submit"
+            class="bg-blue-600 text-white py-2 px-6 rounded-lg shadow-md hover:bg-blue-700"
+          >
+            Start Scan
+          </button>
+        </form>
+        <button
+          class="mt-4 bg-green-600 text-white py-2 px-6 rounded-lg shadow-md hover:bg-green-700"
+          onclick="rescan()"
+        >
+          🔁 Rescan
+        </button>
+      </div>
+      <div id="progress-container" class="progress-container" style="display: none;">
+        <div class="progress-bar"></div>
+      </div>
     </div>
 
     <!-- Live Logs Section -->
     <div class="container mx-auto mt-8">
-        <div class="bg-white shadow-lg p-6 rounded-lg">
-            <h2 class="text-2xl font-semibold mb-2">📜 Live Scan Logs</h2>
-            <div id="live-logs" class="bg-gray-100 p-4 rounded max-h-64 overflow-auto border border-gray-300"></div>
-        </div>
+      <div class="bg-white shadow-lg p-6 rounded-lg text-gray-900">
+        <h2 class="text-2xl font-semibold mb-2">📜 Live Scan Logs</h2>
+        <div
+          id="live-logs"
+          class="bg-gray-100 p-4 rounded max-h-64 overflow-auto border border-gray-300 text-sm"
+        ></div>
+      </div>
     </div>
 
     <!-- Scan Results Section -->
     <div id="scan-results" class="container mx-auto mt-8 hidden">
-        <div class="bg-white shadow-lg p-6 rounded-lg">
-            <h2 class="text-3xl font-semibold mb-4">🔍 Scan Results</h2>
+      <div class="bg-white shadow-lg p-6 rounded-lg text-gray-900">
+        <h2 class="text-3xl font-semibold mb-4">🔍 Scan Results</h2>
+        <button
+          class="w-full text-left font-bold text-lg bg-gray-200 p-3 rounded-lg mb-2 toggle-button"
+          onclick="toggleSection('open-ports')"
+        >
+          🏷️ Open Ports (Click to Expand)
+        </button>
+        <div
+          id="open-ports"
+          class="hidden bg-gray-100 p-4 rounded-lg max-h-64 overflow-auto mb-4"
+        ></div>
 
-            <button class="w-full text-left font-bold text-lg bg-gray-200 p-3 rounded-lg mb-2" onclick="toggleSection('open-ports')">📂 Open Ports (Click to Expand)</button>
-            <div id="open-ports" class="hidden bg-gray-100 p-4 rounded-lg max-h-64 overflow-auto"></div>
+        <button
+          class="w-full text-left font-bold text-lg bg-gray-200 p-3 rounded-lg mb-2 toggle-button"
+          onclick="toggleSection('security-headers')"
+        >
+          🔒 Security Headers (Click to Expand)
+        </button>
+        <div
+          id="security-headers"
+          class="hidden bg-gray-100 p-4 rounded-lg max-h-64 overflow-auto mb-4"
+        ></div>
 
-            <button class="w-full text-left font-bold text-lg bg-gray-200 p-3 rounded-lg mb-2" onclick="toggleSection('security-headers')">🔒 Security Headers (Click to Expand)</button>
-            <div id="security-headers" class="hidden bg-gray-100 p-4 rounded-lg max-h-64 overflow-auto"></div>
-
-            <button class="w-full text-left font-bold text-lg bg-gray-200 p-3 rounded-lg mb-2" onclick="toggleSection('sensitive-files')">📁 Sensitive Files (Click to Expand)</button>
-            <div id="sensitive-files" class="hidden bg-gray-100 p-4 rounded-lg max-h-64 overflow-auto"></div>
-        </div>
+        <button
+          class="w-full text-left font-bold text-lg bg-gray-200 p-3 rounded-lg mb-2 toggle-button"
+          onclick="toggleSection('sensitive-files')"
+        >
+          🗄️ Sensitive Files Found (Click to Expand)
+        </button>
+        <div
+          id="sensitive-files"
+          class="hidden bg-gray-100 p-4 rounded-lg max-h-64 overflow-auto mb-4"
+        ></div>
+      </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-gray-900 text-white mt-12 p-4 text-center text-sm">
-        <p>&copy; 2025 Security Scanner. All rights reserved.</p>
-    </footer>
+    <!-- Features, How It Works, Testimonials -->
+    <div class="container features-section">
+      <div class="feature-box">
+        <div class="feature-icon">⚙️</div>
+        <div class="feature-title">Advanced Scanning</div>
+        <p class="text-sm">
+          Leverage powerful port checks and vulnerability scans with real-time updates.
+        </p>
+      </div>
+      <div class="feature-box">
+        <div class="feature-icon">🗺️</div>
+        <div class="feature-title">DNS Insights</div>
+        <p class="text-sm">
+          Explore DNS records, track down server locations, and gather network intelligence.
+        </p>
+      </div>
+      <div class="feature-box">
+        <div class="feature-icon">💾</div>
+        <div class="feature-title">Custom Reporting</div>
+        <p class="text-sm">
+          Generate detailed PDF reports for your scans, perfect for audits or documentation.
+        </p>
+      </div>
+    </div>
+
+    <div class="container how-it-works">
+      <h2 class="text-3xl font-semibold mb-6">How It Works 💡</h2>
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-description">
+          <h4 class="font-bold mb-1">Enter Your Target</h4>
+          <p>Simply type in the URL or domain you wish to scan. Our tool automatically checks for open ports, missing security headers, and more.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-description">
+          <h4 class="font-bold mb-1">Real-Time Logs</h4>
+          <p>Watch the scan in progress with live logs. The system categorizes each finding into relevant sections for easy review.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-description">
+          <h4 class="font-bold mb-1">Analyze Results</h4>
+          <p>Open ports, missing headers, and sensitive files are flagged. Use this data to improve your site's security posture.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- <div class="container testimonials">
+      <h2 class="text-3xl font-semibold mb-6">User Testimonials 🌟</h2>
+      <div class="testimonial">
+        <p class="text-lg font-semibold">“This scanner saved me countless hours in auditing my company's servers!”</p>
+        <p class="text-sm text-right text-cyan-200">— Alex T.</p>
+      </div>
+      <div class="testimonial">
+        <p class="text-lg font-semibold">“Hands down the easiest DNS checker I've ever used. Great UI and very informative!”</p>
+        <p class="text-sm text-right text-cyan-200">— Brianna M.</p>
+      </div>
+      <div class="testimonial">
+        <p class="text-lg font-semibold">“The live logs are a game changer. It's like watching a detective at work!”</p>
+        <p class="text-sm text-right text-cyan-200">— Carlos R.</p>
+      </div>
+    </div> -->
+  </div>
+
+  <!-- Reports Section -->
+  <div id="reportsSection" class="container mx-auto mt-8 hidden">
+    <div class="bg-white shadow-lg p-6 rounded-lg text-gray-900">
+      <h2 class="text-3xl font-semibold mb-4">📁 Existing Reports</h2>
+      <p class="text-sm text-gray-600">
+        Below is a list of scan reports. In a real application, you’d fetch these from your backend.
+      </p>
+      <div class="table-container">
+        <table class="reports-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>URL</th>
+              <th>Date</th>
+              <th>Findings</th>
+              <th>Download</th>
+            </tr>
+          </thead>
+          <tbody id="reportsTableBody">
+            <!-- Populated dynamically in JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<!-- About Section -->
+<div id="aboutSection" class="container mx-auto mt-8 hidden">
+    <div class="bg-white shadow-lg p-6 rounded-lg text-gray-900">
+      <h2 class="text-3xl font-semibold mb-4 text-center">About Security Scanner 🚀</h2>
+      <p class="text-lg text-gray-800 mb-4">
+        Welcome to <strong>Security Scanner</strong>, your trusted partner in safeguarding your digital infrastructure. 
+        As the web becomes increasingly complex, ensuring the security of your online assets has never been more important. 
+        Our mission is to provide a comprehensive, real-time security solution that is accessible to everyone—from developers and small businesses to large enterprises.
+      </p>
+      <p class="text-lg text-gray-800 mb-4">
+        At <strong>Security Scanner</strong>, we focus on helping you identify vulnerabilities, misconfigurations, and potential threats on your websites and servers. With our intuitive tools, you can scan for open ports, check for missing security headers, and locate sensitive files—enabling you to mitigate risks before they become serious issues.
+      </p>
+      <h3 class="text-2xl font-semibold text-center text-blue-600 mb-4">Why Choose Security Scanner?</h3>
+      <ul class="list-disc pl-6 space-y-2">
+        <li><strong>Real-Time Monitoring:</strong> Track ongoing scans and get instant feedback on security threats as they are detected.</li>
+        <li><strong>Comprehensive Reports:</strong> Receive detailed, actionable reports and downloadable PDFs to share with your team or for documentation purposes.</li>
+        <li><strong>DNS Insights:</strong> Analyze DNS records, check server locations, and identify potential misconfigurations with our DNS checker.</li>
+        <li><strong>Ease of Use:</strong> Our user-friendly interface makes scanning and understanding your results easy, even for those new to cybersecurity.</li>
+        <li><strong>Built with You in Mind:</strong> We offer a tool that balances advanced security scanning with simplicity, making it perfect for everyone—whether you're a developer, security professional, or business owner.</li>
+      </ul>
+      <h3 class="text-2xl font-semibold text-center text-blue-600 mt-6 mb-4">Our Vision</h3>
+      <p class="text-lg text-gray-800">
+        Our vision is to empower individuals and organizations to proactively address web security concerns in an easy, efficient, and affordable way. 
+        We strive to create a more secure web, one scan at a time, by making security tools accessible and easy to use for all.
+      </p>
+      <h3 class="text-2xl font-semibold text-center text-blue-600 mt-6 mb-4">Join Us on Our Journey 🌍</h3>
+      <p class="text-lg text-gray-800">
+        Whether you’re securing your personal website or managing the security of a large organization, <strong>Security Scanner</strong> is here to help. 
+        Start scanning today and take control of your digital security.
+      </p>
+    </div>
+  </div>
+  
+
+  <!-- Results Modal (Optional) -->
+  <div id="resultsModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-11/12 max-w-3xl">
+      <h2 class="text-2xl font-bold mb-4">Scan Results</h2>
+      <p><strong class="text-gray-700">URL:</strong> <span id="modalUrl" class="text-blue-600"></span></p>
+      <div class="bg-gray-100 p-4 rounded mt-4 max-h-80 overflow-y-auto border">
+        <pre id="modalContent" class="whitespace-pre-wrap text-gray-800"></pre>
+      </div>
+      <div class="mt-4 flex justify-end">
+        <button onclick="downloadReport()" class="bg-green-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-green-700 mr-2">
+          Download Report
+        </button>
+        <button onclick="closeModal()" class="bg-red-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-red-700">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-white mt-12 p-4 text-center">
+    <p>&copy; 2025 Security Scanner. All rights reserved.</p>
+    <p class="text-xs mt-2">Built with 💙 by Futuristic Devs</p>
+  </footer>
 </body>
 </html>
