@@ -65,6 +65,16 @@ For more details, refer to [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ---
 
+## 👥 Contributors
+
+Thanks to everyone who has contributed to this project! 🎉  
+
+[![Contributors](https://contrib.rocks/image?repo=ravikyada/Nova)](https://github.com/ravikyada/Nova/graphs/contributors)
+
+![GitHub contributors](https://img.shields.io/github/contributors/ravikyada/Nova)
+
+---
+
 ## 🛡️ Code of Conduct
 
 This project follows a strict **Code of Conduct** to ensure a welcoming environment for all contributors. By participating, you agree to uphold these standards. Please report unacceptable behavior to the project maintainers.
@@ -87,7 +97,6 @@ Before submitting a bug report, please:
 💬 **Join Discussions** | 📢 **Report Issues** | ⭐ **Star the Repo** if you find it useful!
 
 ---
-
 ## 📜 License
 This project is licensed under the [MIT License](LICENSE).
 
