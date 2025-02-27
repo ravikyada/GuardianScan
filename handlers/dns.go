@@ -1,3 +1,4 @@
+// For DNS
 package handlers
 
 import (
