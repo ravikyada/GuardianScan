@@ -1,131 +1,229 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scan Reports</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            fetch("/reports", { method: "POST" })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.length === 0) {
-                        document.getElementById("reports").innerHTML = "<p class='text-gray-500'>No reports found. Run a scan to generate reports.</p>";
-                        return;
-                    }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Scanner - Reports</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script defer src="/static/script.js"></script>
+  <script>
+    // Global array to hold report objects
+    let reportsData = [];
 
-                    let reportsHtml = `
-                        <h1 class="text-2xl font-bold mb-4 text-gray-700">Recent Scan Reports</h1>
-                        <div class="max-h-96 overflow-y-auto border border-gray-300 rounded-lg shadow"> 
-                            <table class="table-auto w-full border-collapse">
-                                <thead class="bg-gray-200 sticky top-0 z-10">
-                                    <tr>
-                                        <th class="border px-4 py-2">Timestamp</th>
-                                        <th class="border px-4 py-2">URL</th>
-                                        <th class="border px-4 py-2">Results</th>
-                                    </tr>
-                                </thead>
-                                <tbody>`;
-
-                    data.forEach((report, index) => {
-                        reportsHtml += `
-                            <tr class="bg-white border-b hover:bg-gray-100">
-                                <td class="border px-4 py-2">${report.timestamp}</td>
-                                <td class="border px-4 py-2">${report.url}</td>
-                                <td class="border px-4 py-2">
-                                    <button class="text-blue-600 underline view-results" data-index="${index}">
-                                        View Results
-                                    </button>
-                                </td>
-                            </tr>`;
-                    });
-
-                    reportsHtml += `</tbody></table></div>`;
-                    document.getElementById("reports").innerHTML = reportsHtml;
-
-                    // Attach event listeners to "View Results" buttons
-                    document.querySelectorAll(".view-results").forEach(button => {
-                        button.addEventListener("click", function () {
-                            const reportIndex = this.getAttribute("data-index");
-                            showReportDetails(data[reportIndex]); // Pass correct report
-                        });
-                    });
-                })
-                .catch(error => {
-                    console.error("Error fetching reports:", error);
-                    document.getElementById("reports").innerHTML = "<p class='text-red-500'>Failed to load reports.</p>";
-                });
+    document.addEventListener("DOMContentLoaded", () => {
+      // Fetch existing reports from API and populate the table
+      fetch("/api/reports", { method: "GET" })
+        .then(response => response.json())
+        .then(data => {
+          reportsData = data;
+          populateReportsTable(reportsData);
+        })
+        .catch(error => {
+          console.error("Error fetching reports:", error);
+          document.getElementById("reportsTableBody").innerHTML = `
+            <tr>
+              <td colspan="3" class="text-center text-red-500 py-4">
+                Failed to load reports.
+              </td>
+            </tr>`;
         });
+    });
 
-        // Function to display report details in a modal
-        function showReportDetails(report) {
-            if (!report) {
-                console.error("Invalid report data:", report);
-                alert("Error: Report not found!");
-                return;
-            }
+    // Populate the reports table with data
+    function populateReportsTable(data) {
+      const reportsTableBody = document.getElementById("reportsTableBody");
+      reportsTableBody.innerHTML = "";
+      if (data.length === 0) {
+        reportsTableBody.innerHTML = `
+          <tr>
+            <td colspan="3" class="text-center text-gray-500 py-4">
+              No reports found. Run a scan to generate reports.
+            </td>
+          </tr>`;
+        return;
+      }
+      data.forEach((report, index) => {
+        const row = document.createElement("tr");
+        row.className = "bg-white border-b hover:bg-gray-100";
+        row.innerHTML = `
+          <td class="border px-4 py-2">${report.timestamp}</td>
+          <td class="border px-4 py-2">${report.url}</td>
+          <td class="border px-4 py-2">
+            <button class="text-blue-600 underline view-results" data-index="${index}">
+              View Results
+            </button>
+          </td>`;
+        reportsTableBody.appendChild(row);
+      });
 
-            const modal = document.getElementById("resultsModal");
-            const modalContent = document.getElementById("modalContent");
+      // Attach event listeners to "View Results" buttons
+      document.querySelectorAll(".view-results").forEach(button => {
+        button.addEventListener("click", function () {
+          const reportIndex = this.getAttribute("data-index");
+          showReportDetails(reportsData[reportIndex]);
+        });
+      });
+    }
 
-            modalContent.innerHTML = `
-                <h2 class="text-xl font-bold mb-2">Scan Results</h2>
-                <p><strong>Timestamp:</strong> ${report.timestamp}</p>
-                <p><strong>URL:</strong> ${report.url}</p>
-                <pre class="bg-gray-100 p-4 border max-h-60 overflow-y-auto">${report.results.replace(/\n/g, "<br>")}</pre>
-                <button class="bg-red-500 text-white px-4 py-2 mt-4" onclick="closeModal()">Close</button>
-            `;
+    // Display report details in a modal
+    function showReportDetails(report) {
+      if (!report) {
+        console.error("Invalid report data:", report);
+        alert("Error: Report not found!");
+        return;
+      }
+      const modal = document.getElementById("resultsModal");
+      const modalContent = document.getElementById("modalContent");
+      const modalUrl = document.getElementById("modalUrl");
+      modalUrl.textContent = report.url;
+      modalContent.innerHTML = `
+        <strong>Timestamp:</strong> ${report.timestamp}<br>
+        <strong>URL:</strong> ${report.url}<br>
+        <hr class="my-2">
+        <strong>Scan Results:</strong><br>
+        ${report.results.replace(/\n/g, "<br>")}
+      `;
+      modal.classList.remove("hidden");
+    }
 
-            modal.classList.remove("hidden"); // Show modal
+    // Close the modal
+    function closeModal() {
+      document.getElementById("resultsModal").classList.add("hidden");
+    }
+
+    // Function to generate a new report via scanning
+    function generateNewReport(event) {
+      event.preventDefault();
+      const url = document.getElementById("newReportUrl").value.trim();
+      if (!url) {
+        alert("Please enter the website URL.");
+        return;
+      }
+      // Disable the button and show a status message during scanning
+      document.getElementById("newReportForm").querySelector("button").disabled = true;
+      document.getElementById("newReportStatus").textContent = "Scanning in progress...";
+      
+      let scanLogs = "";
+      const eventSource = new EventSource(`/logs?url=${encodeURIComponent(url)}`);
+      eventSource.onmessage = function(event) {
+        scanLogs += event.data + "\n";
+        if (event.data.includes("🔴 Scan complete, closing connection.")) {
+          eventSource.close();
+          // Create a new report object
+          const newReport = {
+            timestamp: new Date().toISOString(),
+            url: url,
+            results: scanLogs
+          };
+          reportsData.push(newReport);
+          populateReportsTable(reportsData);
+          document.getElementById("newReportStatus").textContent = "Report generated successfully!";
+          // Re-enable the button and clear the input after a short delay
+          setTimeout(() => {
+            document.getElementById("newReportForm").querySelector("button").disabled = false;
+            document.getElementById("newReportStatus").textContent = "";
+            document.getElementById("newReportUrl").value = "";
+          }, 3000);
         }
+      };
+      eventSource.onerror = function() {
+        console.error("Error during scanning");
+        eventSource.close();
+        document.getElementById("newReportStatus").textContent = "Error generating report. Please try again.";
+        document.getElementById("newReportForm").querySelector("button").disabled = false;
+      };
+    }
 
-        // Function to close the modal
-        function closeModal() {
-            document.getElementById("resultsModal").classList.add("hidden");
-        }
-    </script>
+    // Download the report shown in the modal as a PDF
+    function downloadReport() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const modalContent = document.getElementById("modalContent").innerText;
+      doc.setFontSize(16);
+      doc.text("Scan Report", 20, 20);
+      doc.setFontSize(12);
+      doc.text(modalContent, 20, 30);
+      doc.save('scan-report.pdf');
+    }
+
+    // Optional: Redirect to home for a rescan (if needed)
+    function rescanWebsite() {
+      window.location.href = "/";
+    }
+  </script>
 </head>
-<body class="bg-gray-100">
-    <!-- Navigation -->
-    <nav class="bg-blue-600 text-white p-4">
-        <div class="container mx-auto flex justify-between">
-            <a href="/" class="font-bold text-lg">🔍 Security Scanner</a>
-            <div class="space-x-4">
-                <a href="/" class="hover:underline">Home</a>
-                <a href="/reports" class="hover:underline">Reports</a>
-                <a href="/about" class="hover:underline">About</a>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Main Content -->
-    <div class="container mx-auto mt-8">
-        <div id="reports" class="bg-white shadow p-6 rounded-lg"></div>
+<body class="bg-gray-100 font-sans">
+  <!-- Navigation -->
+  <nav class="bg-blue-600 text-white p-4">
+    <div class="container mx-auto flex justify-between">
+      <a href="/" class="font-bold text-lg">🔍 Security Scanner</a>
+      <div class="space-x-4">
+        <a href="/" class="hover:underline">Home</a>
+        <a href="/reports" class="hover:underline">Reports</a>
+        <a href="/about" class="hover:underline">About</a>
+        <a href="/dnscheck" class="hover:underline">DNS Check</a>
+      </div>
     </div>
+  </nav>
 
-    <!-- Results Modal -->
-    <div id="resultsModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-lg w-11/12 max-w-3xl">
-            <h2 class="text-2xl font-bold mb-4">Scan Results</h2>
-            <p><strong class="text-gray-700">URL:</strong> <span id="modalUrl" class="text-blue-600"></span></p>
-
-            <div class="bg-gray-100 p-4 rounded mt-4 max-h-80 overflow-y-auto border">
-                <pre id="modalContent" class="whitespace-pre-wrap text-gray-800"></pre>
-            </div>
-
-            <div class="mt-4 flex justify-end">
-                <button onclick="closeModal()" class="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-700">
-                    Close
-                </button>
-            </div>
-        </div>
+  <!-- Generate New Report Form -->
+  <div class="container mx-auto mt-8">
+    <div class="bg-white shadow p-6 rounded-lg">
+      <h1 class="text-2xl font-bold mb-4">Generate a New Report</h1>
+      <form id="newReportForm" onsubmit="generateNewReport(event)" class="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
+        <input type="text" id="newReportUrl" placeholder="Enter website URL (e.g., https://example.com)" required class="flex-1 p-2 border border-gray-300 rounded">
+        <button type="submit" class="bg-green-600 text-white py-2 px-6 rounded-lg shadow-md hover:bg-green-700">Generate Report</button>
+      </form>
+      <p id="newReportStatus" class="mt-2 text-sm text-blue-600"></p>
     </div>
+  </div>
 
+  <!-- Main Content: Reports Table -->
+  <div class="container mx-auto mt-8">
+    <div class="bg-white shadow p-6 rounded-lg">
+      <h1 class="text-2xl font-bold mb-4">Recent Scan Reports</h1>
+      <table class="table-auto w-full border-collapse border border-gray-300">
+        <thead>
+          <tr class="bg-gray-200">
+            <th class="border px-4 py-2">Timestamp</th>
+            <th class="border px-4 py-2">URL</th>
+            <th class="border px-4 py-2">Results</th>
+          </tr>
+        </thead>
+        <tbody id="reportsTableBody">
+          <!-- Report rows will be inserted dynamically -->
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-    <!-- Footer -->
-    <footer class="bg-gray-800 text-white mt-12 p-4 text-center">
-        <p>&copy; 2025 Security Scanner. All rights reserved.</p>
-    </footer>
+  <!-- Results Modal -->
+  <div id="resultsModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-11/12 max-w-3xl">
+      <h2 class="text-2xl font-bold mb-4">Scan Results</h2>
+      <p><strong class="text-gray-700">URL:</strong> <span id="modalUrl" class="text-blue-600"></span></p>
+      <div class="bg-gray-100 p-4 rounded mt-4 max-h-80 overflow-y-auto border">
+        <pre id="modalContent" class="whitespace-pre-wrap text-gray-800"></pre>
+      </div>
+      <div class="mt-4 flex justify-end">
+        <button onclick="rescanWebsite()" class="bg-blue-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 mr-2">
+          Rescan
+        </button>
+        <button onclick="downloadReport()" class="bg-green-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-green-700 mr-2">
+          Download Report
+        </button>              
+        <button onclick="closeModal()" class="bg-red-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-red-700">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-white mt-12 p-4 text-center">
+    <p>&copy; 2025 Security Scanner. All rights reserved.</p>
+  </footer>
 </body>
-</html> 
+</html>
